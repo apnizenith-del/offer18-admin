@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+
+    "prebuild": "npm install && npx prisma generate && npx prisma db push && npx prisma db seed",
+
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
