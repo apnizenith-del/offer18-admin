@@ -113,23 +113,23 @@ if (!offer || offer.status !== "active" || !trackUrl) {
     } as any,
   });
 
-  const redirectUrl = expandMacros(offer.tracking.trackUrl, {
-    click_id: clickId,
-    offer_id: offerId,
-    aff_id: affiliateId,
-    sl_id: smartlinkId ?? "",
-    subid1: subid1 ?? "",
-    subid2: subid2 ?? "",
-    subid3: subid3 ?? "",
-    source: source ?? "",
-    country: country ?? "",
-    device: device ?? "",
-    os: os ?? "",
-    browser: browser ?? "",
-    ip: ip ?? "",
-    ua: ua ?? "",
-    timestamp: String(Date.now()),
-  });
+  const redirectUrl = expandMacros(trackUrl, {
+  click_id: clickId,
+  offer_id: offerId,
+  aff_id: affiliateId,
+  sl_id: smartlinkId ?? "",
+  subid1: subid1 ?? "",
+  subid2: subid2 ?? "",
+  subid3: subid3 ?? "",
+  source: source ?? "",
+  country: country ?? "",
+  device: device ?? "",
+  os: os ?? "",
+  browser: browser ?? "",
+  ip: ip ?? "",
+  ua: ua ?? "",
+  timestamp: String(Date.now()),
+});
 
   return NextResponse.redirect(redirectUrl, { status: 302 });
 }
