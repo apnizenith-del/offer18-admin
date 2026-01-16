@@ -5,13 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-
     "prebuild": "npm install && npx prisma generate && npx prisma db push && npx prisma db seed",
-
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
@@ -30,6 +27,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.17.10",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
