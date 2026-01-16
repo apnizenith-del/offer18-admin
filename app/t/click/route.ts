@@ -36,7 +36,12 @@ export async function GET(req: Request) {
     } as any,
   });
 
-  if (!offer || offer.status !== "active" || !offer.tracking?.trackUrl) {
+  const trackUrl =
+  Array.isArray((offer as any).tracking)
+    ? (offer as any).tracking[0]?.trackUrl
+    : (offer as any).tracking?.trackUrl;
+
+if (!offer || offer.status !== "active" || !trackUrl) {
     await logFraud("offer_blocked", { offerId, affiliateId, ip, ua, country });
     return text(404, "Offer not available");
   }
