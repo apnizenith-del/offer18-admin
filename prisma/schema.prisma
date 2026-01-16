@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @db.Char(26)
+  email        String   @unique @db.VarChar(190)
+  username     String?  @unique @db.VarChar(80)
+  passwordHash String   @db.VarChar(255)
+  isActive     Boolean  @default(true)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions  AdminSession[]
+  roles     AdminRoleMap[]
+  loginLogs AdminLoginLog[]
+}
+
+model AdminSession {
+  id        String   @id @db.Char(26)
+  adminId   String   @db.Char(26)
+  tokenHash String   @unique @db.Char(64)
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, expiresAt])
+  @@index([expiresAt])
+}
+
+model Role {
+  id        String   @id @db.Char(26)
+  name      String   @unique @db.VarChar(80)
+  createdAt DateTime @default(now())
+
+  perms  RolePermission[]
+  admins AdminRoleMap[]
+}
+
+model Permission {
+  id        String   @id @db.Char(26)
+  permKey   String   @unique @db.VarChar(120)
+  module    String   @db.VarChar(60)
+  label     String   @db.VarChar(190)
+  createdAt DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  id           String @id @db.Char(26)
+  roleId       String @db.Char(26)
+  permissionId String @db.Char(26)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model AdminRoleMap {
+  id      String @id @db.Char(26)
+  adminId String @db.Char(26)
+  roleId  String @db.Char(26)
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  role  Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([adminId, roleId])
+}
+
+model AdminLoginLog {
+  id        String   @id @db.Char(26)
+  adminId   String?  @db.Char(26)
+  email     String?  @db.VarChar(190)
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(255)
+  success   Boolean  @default(true)
+  reason    String?  @db.VarChar(190)
+  createdAt DateTime @default(now())
+
+  admin AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId, createdAt])
+  @@index([ip, createdAt])
+}
+
+model Affiliate {
+  id             String   @id @db.Char(26)
+  name           String   @db.VarChar(120)
+  email          String   @unique @db.VarChar(190)
+  status         String   @default("pending") @db.VarChar(20)
+  trafficSources Json?
+  riskLevel      String   @default("normal") @db.VarChar(20)
+  currency       String   @default("USD") @db.VarChar(10)
+  payoutModel    String   @default("default") @db.VarChar(30)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  offerAccess AffiliateOfferAccess[]
+  clicks      Click[]
+  conversions Conversion[]
+}
+
+model AffiliateOfferAccess {
+  id             String   @id @db.Char(26)
+  affiliateId    String   @db.Char(26)
+  offerId        String   @db.Char(26)
+  isAllowed      Boolean  @default(true)
+  isPrivate      Boolean  @default(false)
+  payoutOverride Decimal? @db.Decimal(18, 6)
+  capDailyOverride  Int?
+  capHourlyOverride Int?
+  flagsJson      Json?
+  updatedAt      DateTime @updatedAt
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  offer     Offer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([affiliateId, offerId])
+  @@index([offerId, isAllowed])
+}
+
+model Offer {
+  id             String   @id @db.Char(26)
+  advertiserId   String?  @db.Char(26)
+  name           String   @db.VarChar(180)
+  description    String?
+  category       String?  @db.VarChar(80)
+  type           String   @db.VarChar(10)
+  status         String   @default("active") @db.VarChar(20)
+  currency       String   @default("USD") @db.VarChar(10)
+  payoutDefault  Decimal  @default(0) @db.Decimal(18, 6)
+  revenueDefault Decimal  @default(0) @db.Decimal(18, 6)
+  allowIncent    Boolean  @default(false)
+  trafficRestrictions Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tracking     OfferTracking?
+  caps         OfferCap[]
+  rules        OfferRule?
+  targetGeo    OfferTargetGeo[]
+  targetDevice OfferTargetDevice[]
+  timeTargeting OfferTimeTargeting?
+
+  offerAccess AffiliateOfferAccess[]
+  clicks      Click[]
+  conversions Conversion[]
+}
+
+model OfferTracking {
+  id         String   @id @db.Char(26)
+  offerId    String   @unique @db.Char(26)
+  previewUrl String?  @db.VarChar(255)
+  trackUrl   String   @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+}
+
+model OfferCap {
+  id       String   @id @db.Char(26)
+  offerId  String   @db.Char(26)
+  capType  String   @db.VarChar(10)
+  capLimit Int
+  timezone String?  @db.VarChar(60)
+  createdAt DateTime @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, capType])
+}
+
+model OfferRule {
+  id                 String   @id @db.Char(26)
+  offerId             String   @unique @db.Char(26)
+  duplicateRule       Json?
+  conversionWindowSec Int?
+  holdPeriodSec       Int?
+  ruleJson            Json?
+  updatedAt           DateTime @updatedAt
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+}
+
+model OfferTargetGeo {
+  id      String @id @db.Char(26)
+  offerId String @db.Char(26)
+  country String @db.Char(2)
+  mode    String @default("allow") @db.VarChar(10)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, country])
+}
+
+model OfferTargetDevice {
+  id      String @id @db.Char(26)
+  offerId String @db.Char(26)
+  device  String @db.VarChar(30)
+  mode    String @default("allow") @db.VarChar(10)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, device])
+}
+
+model OfferTimeTargeting {
+  id       String @id @db.Char(26)
+  offerId  String @unique @db.Char(26)
+  daysJson  Json?
+  hoursJson Json?
+  timezone String? @db.VarChar(60)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+}
+
+model Click {
+  id          String   @id @db.Char(26)
+  offerId     String   @db.Char(26)
+  affiliateId String   @db.Char(26)
+  smartlinkId String?  @db.Char(26)
+  subid1      String?  @db.VarChar(120)
+  subid2      String?  @db.VarChar(120)
+  subid3      String?  @db.VarChar(120)
+  source      String?  @db.VarChar(120)
+  ip          String?  @db.VarChar(64)
+  ua          String?  @db.VarChar(255)
+  country     String?  @db.Char(2)
+  device      String?  @db.VarChar(30)
+  os          String?  @db.VarChar(40)
+  browser     String?  @db.VarChar(40)
+  referer     String?  @db.VarChar(500)
+  isUnique    Int      @default(0)
+  fingerprint String?  @db.VarChar(64)
+  createdAt   DateTime @default(now())
+
+  offer     Offer     @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
+
+  @@index([offerId, createdAt])
+  @@index([affiliateId, createdAt])
+  @@index([country, createdAt])
+  @@index([subid1, createdAt])
+  @@index([fingerprint, createdAt])
+  @@index([ip, createdAt])
+}
+
+model Conversion {
+  id            String   @id @db.Char(26)
+  offerId       String   @db.Char(26)
+  affiliateId   String   @db.Char(26)
+  clickId       String?  @db.Char(26)
+  status        String   @default("pending") @db.VarChar(20)
+  payout        Decimal  @default(0) @db.Decimal(18, 6)
+  revenue       Decimal  @default(0) @db.Decimal(18, 6)
+  currency      String   @default("USD") @db.VarChar(10)
+  goal          String?  @db.VarChar(60)
+  transactionId String?  @db.VarChar(120)
+  subid1        String?  @db.VarChar(120)
+  subid2        String?  @db.VarChar(120)
+  ip            String?  @db.VarChar(64)
+  country       String?  @db.Char(2)
+  meta          Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  offer     Offer     @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
+  history   ConversionStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([offerId, createdAt])
+  @@index([affiliateId, createdAt])
+  @@index([clickId])
+  @@unique([offerId, transactionId])
+}
+
+model ConversionStatusHistory {
+  id           String   @id @db.Char(26)
+  conversionId String   @db.Char(26)
+  fromStatus   String   @db.VarChar(20)
+  toStatus     String   @db.VarChar(20)
+  reason       String?  @db.VarChar(190)
+  actorAdminId String?  @db.Char(26)
+  createdAt    DateTime @default(now())
+
+  conversion Conversion @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+
+  @@index([conversionId, createdAt])
+}
+
+model FraudEvent {
+  id          String   @id @db.Char(26)
+  affiliateId String?  @db.Char(26)
+  offerId     String?  @db.Char(26)
+  clickId     String?  @db.Char(26)
+  conversionId String? @db.Char(26)
+  eventType   String   @db.VarChar(60)
+  severity    String   @default("low") @db.VarChar(10)
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  @@index([affiliateId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model AuditLog {
+  id           String   @id @db.Char(26)
+  actorAdminId String?  @db.Char(26)
+  actorType    String   @default("admin") @db.VarChar(20)
+  action       String   @db.VarChar(80)
+  entityType   String   @db.VarChar(60)
+  entityId     String   @db.Char(26)
+  meta         Json?
+  ip           String?  @db.VarChar(64)
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorAdminId, createdAt])
+}
